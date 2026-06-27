@@ -113,7 +113,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
           <div className="polaroid-caption font-header">
             <h3 className="polaroid-title">Day Complete ✨</h3>
             <p className="polaroid-message italic font-typewriter">
-              "If you're reading this, we did it. Every little stop, every laugh, every random conversation became part of today. I hope years from now this day still makes you smile. Until the next adventure."
+              "Hope you had fun and a really great time. See how fun it was. Anyhoww until next time. woohooo!"
             </p>
             <div className="polaroid-sign font-typewriter">
               — End of Today's Story
@@ -139,7 +139,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
                   {/* Sliding Letter */}
                   <div className="envelope-letter font-handwritten italic text-center">
                     <p>
-                      "Hope you had fun and a really great time. See how fun it was. Anyhoww until next time. woohooo!"
+                      "Thanks for hanging out today! Glad we got to explore and laugh. Let's do this again soon!"
                     </p>
                   </div>
 
