@@ -139,7 +139,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
                   {/* Sliding Letter */}
                   <div className="envelope-letter font-handwritten italic text-center">
                     <p>
-                      "Thank you for spending this day with me. Every little stop, every laugh, and every random conversation made it special. I'm glad we got to create these memories together. Here's to more adventures ahead! ☕"
+                      "Hope you had fun and a really great time. See how fun it was. Anyhoww until next time. woohooo!"
                     </p>
                   </div>
 
@@ -216,7 +216,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
               "Keep smiling, keep exploring, and keep making beautiful memories."
             </p>
             <p className="print-letter-text font-handwritten">
-              Thank you for spending this day with me. Every little stop, every laugh, and every random conversation made it special. I'm glad we got to create these memories together. Here's to more adventures ahead! ☕
+              Hope you had fun and a really great time. See how fun it was. Anyhoww until next time. woohooo!
             </p>
             <div className="print-signature">— Today's Keepsake</div>
           </div>
