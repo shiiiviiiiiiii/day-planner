@@ -111,7 +111,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
 
           {/* Polaroid Caption */}
           <div className="polaroid-caption font-header">
-            <h3 className="polaroid-title">Day Complete ❤️</h3>
+            <h3 className="polaroid-title">Day Complete ✨</h3>
             <p className="polaroid-message italic font-typewriter">
               "If you're reading this, we did it. Every little stop, every laugh, every random conversation became part of today. I hope years from now this day still makes you smile. Until the next adventure."
             </p>
@@ -139,7 +139,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
                   {/* Sliding Letter */}
                   <div className="envelope-letter font-handwritten italic text-center">
                     <p>
-                      "Thank you for saying yes to this day. I don't know which moment will become our favorite memory, but I'm glad we created them together. Here's to many more adventures. ❤️"
+                      "Thank you for spending this day with me. Every little stop, every laugh, and every random conversation made it special. I'm glad we got to create these memories together. Here's to more adventures ahead! ☕"
                     </p>
                   </div>
 
@@ -176,7 +176,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
       <div className="print-layout font-typewriter">
         <div className="print-keepsake-container">
           <div className="print-header">
-            <h1 className="print-title font-header">Our Day Out</h1>
+            <h1 className="print-title font-header">The Day Out</h1>
             <p className="print-date">{formattedDate}</p>
           </div>
           
@@ -205,7 +205,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
                   [ A memory lives here ]
                 </div>
               )}
-              <p className="print-polaroid-caption font-header">Day Complete ❤️</p>
+              <p className="print-polaroid-caption font-header">Day Complete ✨</p>
             </div>
           </div>
 
@@ -216,7 +216,7 @@ export const CompletionExperience: React.FC<CompletionExperienceProps> = ({
               "Keep smiling, keep exploring, and keep making beautiful memories."
             </p>
             <p className="print-letter-text font-handwritten">
-              Thank you for saying yes to this day. I don't know which moment will become our favorite memory, but I'm glad we created them together. Here's to many more adventures. ❤️
+              Thank you for spending this day with me. Every little stop, every laugh, and every random conversation made it special. I'm glad we got to create these memories together. Here's to more adventures ahead! ☕
             </p>
             <div className="print-signature">— Today's Keepsake</div>
           </div>

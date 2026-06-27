@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onTitleClick}
           className="main-title font-header cursor-pointer select-none"
         >
-          Our Day Out
+          The Day Out
           <span 
             className={`cursor-indicator ${isCompleted ? "cursor-indicator-stop" : "cursor-indicator-blink"}`} 
           />
