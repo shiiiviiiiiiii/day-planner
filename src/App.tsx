@@ -28,6 +28,7 @@ export default function App() {
   // Shared Calendar state
   const [sharedTasks, setSharedTasks] = useState<CalendarTask[] | null>(null);
   const [isSharedMode, setIsSharedMode] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -61,9 +62,6 @@ export default function App() {
 
     const handleStorageUpdate = () => {
       setCurrentUser(plannerStorage.getCurrentUser());
-      if (plannerStorage.getCurrentUser()) {
-        setTasks(plannerStorage.getTasks());
-      }
     };
 
     window.addEventListener("planner-storage-update", handleStorageUpdate);
@@ -132,14 +130,34 @@ export default function App() {
 
   const handleAddTask = (title: string, dateStr: string) => {
     if (isSharedMode) return;
-    const newTask = plannerStorage.addTask(title, dateStr);
-    setTasks((prev) => [...prev, newTask]);
+    const newTask: CalendarTask = {
+      id: Math.random().toString(36).substring(2, 9),
+      title: title.trim(),
+      completed: false,
+      date: dateStr,
+      color: "none",
+      notes: "",
+      subtasks: []
+    };
+    const updated = [...tasks, newTask];
+    setTasks(updated);
+    plannerStorage.saveTasks(updated);
   };
 
   const handleAddSomedayTask = (title: string) => {
     if (isSharedMode) return;
-    const newTask = plannerStorage.addTask(title, "someday");
-    setTasks((prev) => [...prev, newTask]);
+    const newTask: CalendarTask = {
+      id: Math.random().toString(36).substring(2, 9),
+      title: title.trim(),
+      completed: false,
+      date: "someday",
+      color: "none",
+      notes: "",
+      subtasks: []
+    };
+    const updated = [...tasks, newTask];
+    setTasks(updated);
+    plannerStorage.saveTasks(updated);
   };
 
   const handleUpdateTask = (updatedTask: CalendarTask) => {
@@ -323,33 +341,70 @@ export default function App() {
                 <>
                   {/* Calendar Top Navigation Header */}
                   <header className="calendar-header">
-                    <div className="calendar-title-group">
-                      <h1 className="calendar-month-year">{getHeaderMonthYear()}</h1>
-                      <div className="calendar-nav-controls">
-                        <button onClick={handlePrevWeek} className="btn-nav-arrow" title="Previous Week">
-                          &lt;
-                        </button>
-                        <button onClick={handleTodayNav} className="btn-link-action" style={{ color: "#000" }}>
-                          Today
-                        </button>
-                        <button onClick={handleNextWeek} className="btn-nav-arrow" title="Next Week">
-                          &gt;
-                        </button>
-                      </div>
-                    </div>
+                    <h1 className="calendar-month-year">{getHeaderMonthYear()}</h1>
 
-                    <div className="calendar-actions-row">
+                    <div className="calendar-header-right">
+                      {/* Profile Button (Blue Circle) */}
                       {currentUser && (
-                        <button onClick={handleShareCalendar} className="btn-link-action">
-                          Share calendar
+                        <button
+                          onClick={() => alert(`Logged in as: ${currentUser}`)}
+                          className="btn-header-circle btn-profile"
+                          title={`Profile: ${currentUser}`}
+                        >
+                          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
                         </button>
                       )}
-                      <button onClick={() => window.print()} className="btn-icon-pill" title="Save / Print Calendar">
-                        <svg viewBox="0 0 24 24" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
+
+                      {/* Settings Menu Button (Purple Circle) */}
+                      <div className="header-menu-container">
+                        <button
+                          onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                          className="btn-header-circle btn-more"
+                          title="Menu Options"
+                        >
+                          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none">
+                            <circle cx="12" cy="12" r="1.5" />
+                            <circle cx="12" cy="5" r="1.5" />
+                            <circle cx="12" cy="19" r="1.5" />
+                          </svg>
+                        </button>
+                        
+                        {showSettingsMenu && (
+                          <div className="header-dropdown-menu">
+                            {currentUser && (
+                              <button onClick={() => { setShowSettingsMenu(false); handleShareCalendar(); }} className="dropdown-item">
+                                Share Calendar
+                              </button>
+                            )}
+                            <button onClick={() => { setShowSettingsMenu(false); window.print(); }} className="dropdown-item">
+                              Save/Print Calendar
+                            </button>
+                            <button onClick={() => { setShowSettingsMenu(false); handleMusicToggle(); }} className="dropdown-item">
+                              {audioSettings.music ? "♪ Music: ON" : "🎚 Music: OFF"}
+                            </button>
+                            <button onClick={() => { setShowSettingsMenu(false); handleSoundToggle(); }} className="dropdown-item">
+                              ⌨ Sounds: {audioSettings.sound ? "ON" : "OFF"}
+                            </button>
+                            <button onClick={() => { setShowSettingsMenu(false); handleTodayNav(); }} className="dropdown-item">
+                              Go to Today
+                            </button>
+                            <div className="dropdown-divider" />
+                            <button onClick={() => { setShowSettingsMenu(false); handleLogout(); }} className="dropdown-item text-danger">
+                              Log Out
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Navigation Arrow buttons */}
+                      <button onClick={handlePrevWeek} className="btn-header-circle btn-nav-arrow-left" title="Previous Week">
+                        &lt;
+                      </button>
+                      <button onClick={handleNextWeek} className="btn-header-circle btn-nav-arrow-right" title="Next Week">
+                        &gt;
                       </button>
                     </div>
                   </header>
