@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PaperPage } from "./components/PaperPage";
 import { Header } from "./components/Header";
 import { Checklist } from "./components/Checklist";
@@ -6,22 +6,20 @@ import { Footer } from "./components/Footer";
 import { CompletionExperience } from "./components/CompletionExperience";
 import { SurpriseEgg } from "./components/SurpriseEgg";
 import { AdminPanel } from "./components/AdminPanel";
+import { AuthScreen } from "./components/AuthScreen";
 import { type Activity, plannerStorage } from "./lib/storage";
 import { playTypewriterClick, playCarriageReturnBell, stopAmbientMusic } from "./lib/audio";
-import { CONFIG } from "./config";
 
 function App() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [audioSettings, setAudioSettings] = useState({ music: false, sound: false });
   
-  // View states
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  // User Authentication State
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
   
-  // Auth form
-  const [passwordInput, setPasswordInput] = useState("");
-  const [loginError, setLoginError] = useState("");
+  // Edit mode toggle (replaces hidden Admin screen)
+  const [isOrganizeOpen, setIsOrganizeOpen] = useState(false);
 
   // Easter egg
   const [, setClickCount] = useState(0);
@@ -30,21 +28,29 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    setActivities(plannerStorage.getActivities());
-    setPhotoBase64(plannerStorage.getPhoto());
+    const user = plannerStorage.getCurrentUser();
+    setCurrentUser(user);
+    
+    if (user) {
+      setActivities(plannerStorage.getActivities());
+      setPhotoBase64(plannerStorage.getPhoto());
+    }
     setAudioSettings(plannerStorage.getAudioSettings());
     setIsLoaded(true);
 
-    // Keyboard shortcut: Ctrl + Shift + A to open admin dashboard
+    // Keyboard shortcut: Ctrl + Shift + A to toggle organize mode
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && (e.key === "A" || e.key === "a")) {
         e.preventDefault();
-        setIsAdminOpen(true);
+        if (plannerStorage.getCurrentUser()) {
+          setIsOrganizeOpen((prev) => !prev);
+        }
       }
     };
 
-    // Event listener for storage updates (so edits in admin sync instantly)
+    // Event listener for storage updates (so edits in organize panel sync instantly)
     const handleStorageUpdate = () => {
+      setCurrentUser(plannerStorage.getCurrentUser());
       setActivities(plannerStorage.getActivities());
       setPhotoBase64(plannerStorage.getPhoto());
     };
@@ -58,6 +64,13 @@ function App() {
       stopAmbientMusic();
     };
   }, []);
+
+  const handleAuthSuccess = () => {
+    const user = plannerStorage.getCurrentUser();
+    setCurrentUser(user);
+    setActivities(plannerStorage.getActivities());
+    setPhotoBase64(plannerStorage.getPhoto());
+  };
 
   const handleToggle = (id: string) => {
     const updatedActivities = activities.map((activity) => {
@@ -88,6 +101,7 @@ function App() {
   };
 
   const handleTitleClick = () => {
+    if (!currentUser) return;
     setClickCount((prev) => {
       const next = prev + 1;
       if (next >= 5) {
@@ -103,29 +117,16 @@ function App() {
     setAudioSettings(newSettings);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError("");
-
-    if (passwordInput === CONFIG.ADMIN_PASSWORD) {
-      setAdminAuthenticated(true);
-      setPasswordInput("");
-    } else {
-      setLoginError("Incorrect password.");
-    }
-  };
-
   const handleLogout = () => {
-    setAdminAuthenticated(false);
-    setLoginError("");
-  };
-
-  const handleBack = () => {
-    setIsAdminOpen(false);
+    plannerStorage.logout();
+    setCurrentUser(null);
+    setActivities([]);
+    setPhotoBase64(null);
+    setIsOrganizeOpen(false);
   };
 
   const visibleActivities = activities.filter((a) => !a.hidden);
-  const isCompleted = visibleActivities.length > 0 && visibleActivities.every((a) => a.completed);
+  const isCompleted = currentUser !== null && visibleActivities.length > 0 && visibleActivities.every((a) => a.completed);
 
   if (!isLoaded) {
     return (
@@ -141,61 +142,27 @@ function App() {
     <div className="desk-surface">
       <div className="desk-wrapper">
         <PaperPage isCompleted={isCompleted}>
-          {isAdminOpen ? (
-            /* Admin Panel Dashboard View */
-            adminAuthenticated ? (
-              <AdminPanel onBack={handleBack} onLogout={handleLogout} />
-            ) : (
-              /* Typewriter Password Prompt */
-              <div className="admin-login-prompt font-typewriter select-none">
-                <h2 className="font-header login-title">Access Restriction</h2>
-                <p className="login-note italic">
-                  "This checklist is private. Please prove you are authorized to edit today's story."
-                </p>
-
-                <form onSubmit={handleLoginSubmit} className="login-form">
-                  <div className="form-group">
-                    <label className="input-label">Password Prompt:</label>
-                    <input
-                      type="password"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="Type password..."
-                      className="input-text"
-                      autoFocus
-                    />
-                  </div>
-
-                  {loginError && (
-                    <p className="login-error font-semibold">
-                      ⚠ {loginError}
-                    </p>
-                  )}
-
-                  <div className="login-action-row">
-                    <button
-                      type="button"
-                      onClick={handleBack}
-                      className="action-back-link"
-                    >
-                      ← Go Back
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                    >
-                      Unseal Page
-                    </button>
-                  </div>
-                </form>
-
-                <div className="login-footer-info">
-                  * Password configured in config.ts file.
-                </div>
-              </div>
-            )
+          {!currentUser ? (
+            /* Logged Out: Authentication screen */
+            <>
+              <AuthScreen onSuccess={handleAuthSuccess} />
+              
+              {/* Basic footer for logged out state */}
+              <Footer
+                musicEnabled={audioSettings.music}
+                soundEnabled={audioSettings.sound}
+                onAudioChange={handleAudioChange}
+                onAdminClick={() => {}} // Disabled when logged out
+              />
+            </>
+          ) : isOrganizeOpen ? (
+            /* Logged In: Edit/Organize Checklist View */
+            <AdminPanel 
+              onBack={() => setIsOrganizeOpen(false)} 
+              onLogout={handleLogout} 
+            />
           ) : (
-            /* Checklist & Planner View */
+            /* Logged In: Main Checklist & View Mode */
             <>
               {/* Decorative margin notes */}
               <div className="margin-note margin-note-top font-handwritten">
@@ -226,12 +193,12 @@ function App() {
                 show={isCompleted}
               />
 
-              {/* Footer sound controllers & quotes */}
+              {/* Footer sound controllers, quotes, and edit toggles */}
               <Footer
                 musicEnabled={audioSettings.music}
                 soundEnabled={audioSettings.sound}
                 onAudioChange={handleAudioChange}
-                onAdminClick={() => setIsAdminOpen(true)}
+                onAdminClick={() => setIsOrganizeOpen(true)}
               />
             </>
           )}

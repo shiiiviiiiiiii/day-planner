@@ -125,7 +125,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onLogout }) => {
     <div className="admin-panel font-typewriter">
       {/* Header bar */}
       <div className="admin-header-row">
-        <h2 className="font-header admin-panel-title">Admin Dashboard</h2>
+        <h2 className="font-header admin-panel-title">Organize Checklist</h2>
         <div className="admin-btn-group">
           <button onClick={onBack} className="btn-dash">
             ← Back

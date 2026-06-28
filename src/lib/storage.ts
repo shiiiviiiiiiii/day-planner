@@ -6,6 +6,11 @@ export interface Activity {
   hidden: boolean;
 }
 
+export interface UserAccount {
+  username: string;
+  passwordHash: string; // Kept as simple hashing or string for local testing
+}
+
 const DEFAULT_ACTIVITIES: Activity[] = [
   { id: "1", title: "Have breakfast together", completed: false, order: 0, hidden: false },
   { id: "2", title: "Visit the bookstore", completed: false, order: 1, hidden: false },
@@ -16,33 +21,114 @@ const DEFAULT_ACTIVITIES: Activity[] = [
   { id: "7", title: "End the day with dinner", completed: false, order: 6, hidden: false },
 ];
 
-const ACTIVITIES_KEY = "day_out_activities";
-const PHOTO_KEY = "day_out_photo";
+const USERS_KEY = "planner_users_accounts";
+const SESSION_KEY = "planner_current_user_session";
 const AUDIO_SETTINGS_KEY = "day_out_audio_settings";
 
 export const plannerStorage = {
-  getActivities: (): Activity[] => {
+  // --- USER AUTHENTICATION ---
+  
+  getCurrentUser: (): string | null => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(SESSION_KEY);
+  },
+
+  setCurrentUser: (username: string | null): void => {
+    if (typeof window === "undefined") return;
+    if (username) {
+      localStorage.setItem(SESSION_KEY, username.toLowerCase().trim());
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+    window.dispatchEvent(new Event("planner-storage-update"));
+  },
+
+  getUsers: (): UserAccount[] => {
+    if (typeof window === "undefined") return [];
     try {
-      const stored = localStorage.getItem(ACTIVITIES_KEY);
+      const stored = localStorage.getItem(USERS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  signup: (username: string, password: string): { success: boolean; error?: string } => {
+    const name = username.toLowerCase().trim();
+    if (!name || password.length < 4) {
+      return { success: false, error: "Password must be at least 4 characters long." };
+    }
+
+    const users = plannerStorage.getUsers();
+    if (users.some(u => u.username === name)) {
+      return { success: false, error: "Username is already taken." };
+    }
+
+    const newUser: UserAccount = {
+      username: name,
+      passwordHash: btoa(password), // Simple base64 encoding as a mock hash for local storage
+    };
+
+    localStorage.setItem(USERS_KEY, JSON.stringify([...users, newUser]));
+    
+    // Seed default tasks for this new user
+    const userActivitiesKey = `day_out_activities_${name}`;
+    localStorage.setItem(userActivitiesKey, JSON.stringify(DEFAULT_ACTIVITIES));
+    
+    // Log the user in
+    plannerStorage.setCurrentUser(name);
+    return { success: true };
+  },
+
+  login: (username: string, password: string): { success: boolean; error?: string } => {
+    const name = username.toLowerCase().trim();
+    const users = plannerStorage.getUsers();
+    const user = users.find(u => u.username === name);
+
+    if (!user || user.passwordHash !== btoa(password)) {
+      return { success: false, error: "Invalid username or password." };
+    }
+
+    plannerStorage.setCurrentUser(name);
+    return { success: true };
+  },
+
+  logout: (): void => {
+    plannerStorage.setCurrentUser(null);
+  },
+
+  // --- SCOPED CONTENT (Scoped per current active user) ---
+
+  getActivities: (): Activity[] => {
+    const user = plannerStorage.getCurrentUser();
+    if (!user) return [];
+    
+    const activitiesKey = `day_out_activities_${user}`;
+    try {
+      const stored = localStorage.getItem(activitiesKey);
       if (!stored) {
-        localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(DEFAULT_ACTIVITIES));
+        localStorage.setItem(activitiesKey, JSON.stringify(DEFAULT_ACTIVITIES));
         return DEFAULT_ACTIVITIES;
       }
       const parsed = JSON.parse(stored) as Activity[];
       return parsed.sort((a, b) => a.order - b.order);
     } catch (e) {
-      console.error("Error reading activities", e);
+      console.error("Error reading activities for " + user, e);
       return DEFAULT_ACTIVITIES;
     }
   },
 
   saveActivities: (activities: Activity[]): void => {
+    const user = plannerStorage.getCurrentUser();
+    if (!user) return;
+
+    const activitiesKey = `day_out_activities_${user}`;
     try {
       const sorted = [...activities].sort((a, b) => a.order - b.order);
-      localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(sorted));
+      localStorage.setItem(activitiesKey, JSON.stringify(sorted));
       window.dispatchEvent(new Event("planner-storage-update"));
     } catch (e) {
-      console.error("Error saving activities", e);
+      console.error("Error saving activities for " + user, e);
     }
   },
 
@@ -77,17 +163,25 @@ export const plannerStorage = {
   },
 
   getPhoto: (): string | null => {
-    return localStorage.getItem(PHOTO_KEY);
+    const user = plannerStorage.getCurrentUser();
+    if (!user) return null;
+    return localStorage.getItem(`day_out_photo_${user}`);
   },
 
   savePhoto: (base64String: string | null): void => {
+    const user = plannerStorage.getCurrentUser();
+    if (!user) return;
+
+    const photoKey = `day_out_photo_${user}`;
     if (base64String) {
-      localStorage.setItem(PHOTO_KEY, base64String);
+      localStorage.setItem(photoKey, base64String);
     } else {
-      localStorage.removeItem(PHOTO_KEY);
+      localStorage.removeItem(photoKey);
     }
     window.dispatchEvent(new Event("planner-storage-update"));
   },
+
+  // --- SETTINGS (Shared or scoped) ---
 
   getAudioSettings: (): { music: boolean; sound: boolean } => {
     const defaultSettings = { music: false, sound: false };

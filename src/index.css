@@ -1,5 +1,5 @@
 /* Day Out Planner - Nostalgic Vanilla CSS Design System */
-@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Special+Elite&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Special+Elite&display=swap');
 
 /* Reset and Base Styles */
 * {
@@ -18,7 +18,9 @@ body {
 
 /* Typography Font Families */
 .font-header {
-  font-family: 'Special Elite', 'Georgia', serif;
+  font-family: 'IBM Plex Mono', 'Courier Prime', monospace;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .font-typewriter {
@@ -1312,4 +1314,87 @@ body {
     color: #8d7c6f !important;
     margin-top: 20px;
   }
+}
+
+/* Auth Screen tab selectors */
+.auth-tab-row {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 25px;
+  border-bottom: 1px dashed rgba(93, 64, 55, 0.15);
+  padding-bottom: 12px;
+}
+
+.auth-tab-btn {
+  background: transparent;
+  border: 0;
+  color: #8d7c6f;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: color 0.2s, font-weight 0.2s;
+  padding: 4px 8px;
+}
+
+.auth-tab-btn.active {
+  color: #3e2723;
+  font-weight: bold;
+}
+
+.auth-tab-btn:hover {
+  color: #3e2723;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  margin-top: 15px;
+}
+
+/* User status container in footer */
+.user-status-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 0;
+  color: #b71c1c;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.logout-btn:hover {
+  color: #7f0000;
+}
+
+/* Organize list toggle btn */
+.organize-toggle-btn {
+  background: transparent;
+  border: 1px solid #8d7c6f;
+  color: #8d7c6f;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.organize-toggle-btn.active {
+  background-color: #5d4037;
+  color: #f7f1e8;
+  border-color: #5d4037;
+}
+
+.organize-toggle-btn:hover {
+  color: #3e2723;
+  border-color: #3e2723;
+}
+
+.organize-toggle-btn.active:hover {
+  background-color: #3e2723;
+  color: #f7f1e8;
 }

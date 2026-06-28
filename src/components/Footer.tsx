@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { playAmbientMusic, stopAmbientMusic } from "../lib/audio";
+import { plannerStorage } from "../lib/storage";
 
 const QUOTES = [
   "Life happens in ordinary moments.",
@@ -25,10 +26,20 @@ export const Footer: React.FC<FooterProps> = ({
   onAdminClick,
 }) => {
   const [selectedQuote, setSelectedQuote] = useState("");
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
 
   useEffect(() => {
     const randomIndex = Math.floor(Math.random() * QUOTES.length);
     setSelectedQuote(QUOTES[randomIndex]);
+    setCurrentUser(plannerStorage.getCurrentUser());
+
+    const handleStorageUpdate = () => {
+      setCurrentUser(plannerStorage.getCurrentUser());
+    };
+    window.addEventListener("planner-storage-update", handleStorageUpdate);
+    return () => {
+      window.removeEventListener("planner-storage-update", handleStorageUpdate);
+    };
   }, []);
 
   const handleMusicToggle = () => {
@@ -75,14 +86,22 @@ export const Footer: React.FC<FooterProps> = ({
         "{selectedQuote}"
       </div>
 
-      {/* Secret admin access */}
+      {/* User Context & Action Button */}
       <div className="footer-journal-credit">
-        <span>— Day's Journal</span>
-        <button
-          onClick={onAdminClick}
-          className="admin-secret-dot"
-          title="Open Dashboard"
-        />
+        {currentUser ? (
+          <div className="user-status-container">
+            <span className="user-badge">[{currentUser}]</span>
+            <button
+              onClick={onAdminClick}
+              className="organize-toggle-btn"
+              title="Organize Tasks"
+            >
+              ⚙ Organize
+            </button>
+          </div>
+        ) : (
+          <span>— The Day Out</span>
+        )}
       </div>
     </footer>
   );
