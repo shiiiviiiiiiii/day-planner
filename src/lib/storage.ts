@@ -1,29 +1,119 @@
-export interface Activity {
+export interface Subtask {
   id: string;
   title: string;
   completed: boolean;
-  order: number;
-  hidden: boolean;
+}
+
+export interface CalendarTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  date: string; // Format: "YYYY-MM-DD" or "someday"
+  color?: string; // "yellow" | "green" | "blue" | "pink" | "none"
+  notes?: string;
+  subtasks?: Subtask[];
 }
 
 export interface UserAccount {
-  username: string;
-  passwordHash: string; // Kept as simple hashing or string for local testing
+  email: string;
+  passwordHash: string;
 }
-
-const DEFAULT_ACTIVITIES: Activity[] = [
-  { id: "1", title: "Have breakfast together", completed: false, order: 0, hidden: false },
-  { id: "2", title: "Visit the bookstore", completed: false, order: 1, hidden: false },
-  { id: "3", title: "Drink coffee", completed: false, order: 2, hidden: false },
-  { id: "4", title: "Take silly pictures", completed: false, order: 3, hidden: false },
-  { id: "5", title: "Buy ice cream", completed: false, order: 4, hidden: false },
-  { id: "6", title: "Watch the sunset", completed: false, order: 5, hidden: false },
-  { id: "7", title: "End the day with dinner", completed: false, order: 6, hidden: false },
-];
 
 const USERS_KEY = "planner_users_accounts";
 const SESSION_KEY = "planner_current_user_session";
 const AUDIO_SETTINGS_KEY = "day_out_audio_settings";
+
+const getSeedTasksForCurrentWeek = (): CalendarTask[] => {
+  const today = new Date();
+  const day = today.getDay();
+  // Calculate Monday of this week
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(today.setDate(diff));
+  
+  const formatDate = (offsetDays: number) => {
+    const target = new Date(monday);
+    target.setDate(monday.getDate() + offsetDays);
+    return target.toISOString().split("T")[0]; // YYYY-MM-DD
+  };
+
+  return [
+    { 
+      id: "s1", 
+      title: "Hover to complete", 
+      completed: false, 
+      date: formatDate(0), // Monday
+      color: "none", 
+      notes: "Hover over the checkmark on the right of a task to complete it!", 
+      subtasks: [] 
+    },
+    { 
+      id: "s2", 
+      title: "Click to edit", 
+      completed: false, 
+      date: formatDate(0), // Monday
+      color: "none", 
+      notes: "Clicking a task opens a popup window where you can add subtasks and detailed descriptions.", 
+      subtasks: [] 
+    },
+    { 
+      id: "s3", 
+      title: "Drag to other day", 
+      completed: false, 
+      date: formatDate(0), // Monday
+      color: "none", 
+      notes: "You can drag and drop items between days or down to Someday.", 
+      subtasks: [] 
+    },
+    { 
+      id: "s4", 
+      title: "Choose from colors", 
+      completed: false, 
+      date: formatDate(1), // Tuesday
+      color: "yellow", 
+      notes: "You can tag tasks with soft highlight colors to organize them visually.", 
+      subtasks: [] 
+    },
+    { 
+      id: "s5", 
+      title: "Hope you like 😆", 
+      completed: false, 
+      date: formatDate(1), // Tuesday
+      color: "none", 
+      notes: "A clean weekly dashboard designed for sharing.", 
+      subtasks: [] 
+    },
+    { 
+      id: "s6", 
+      title: "That's all!", 
+      completed: false, 
+      date: formatDate(2), // Wednesday
+      color: "green", 
+      notes: "All set!", 
+      subtasks: [] 
+    },
+    { 
+      id: "s7", 
+      title: "Remember to save 👆", 
+      completed: false, 
+      date: formatDate(4), // Friday
+      color: "none", 
+      notes: "Click Save Calendar or print to PDF.", 
+      subtasks: [] 
+    },
+    { 
+      id: "s8", 
+      title: "Plan next adventure", 
+      completed: false, 
+      date: "someday", 
+      color: "none", 
+      notes: "Ideas for the future...", 
+      subtasks: [
+        { id: "sub1", title: "Invite friends", completed: false },
+        { id: "sub2", title: "Choose location", completed: false }
+      ] 
+    },
+  ];
+};
 
 export const plannerStorage = {
   // --- USER AUTHENTICATION ---
@@ -33,10 +123,10 @@ export const plannerStorage = {
     return localStorage.getItem(SESSION_KEY);
   },
 
-  setCurrentUser: (username: string | null): void => {
+  setCurrentUser: (email: string | null): void => {
     if (typeof window === "undefined") return;
-    if (username) {
-      localStorage.setItem(SESSION_KEY, username.toLowerCase().trim());
+    if (email) {
+      localStorage.setItem(SESSION_KEY, email.toLowerCase().trim());
     } else {
       localStorage.removeItem(SESSION_KEY);
     }
@@ -53,43 +143,46 @@ export const plannerStorage = {
     }
   },
 
-  signup: (username: string, password: string): { success: boolean; error?: string } => {
-    const name = username.toLowerCase().trim();
-    if (!name || password.length < 4) {
+  signup: (email: string, password: string): { success: boolean; error?: string } => {
+    const formattedEmail = email.toLowerCase().trim();
+    if (!formattedEmail || !formattedEmail.includes("@")) {
+      return { success: false, error: "Please enter a valid email address." };
+    }
+    if (password.length < 4) {
       return { success: false, error: "Password must be at least 4 characters long." };
     }
 
     const users = plannerStorage.getUsers();
-    if (users.some(u => u.username === name)) {
-      return { success: false, error: "Username is already taken." };
+    if (users.some(u => u.email === formattedEmail)) {
+      return { success: false, error: "An account with this email already exists." };
     }
 
     const newUser: UserAccount = {
-      username: name,
-      passwordHash: btoa(password), // Simple base64 encoding as a mock hash for local storage
+      email: formattedEmail,
+      passwordHash: btoa(password),
     };
 
     localStorage.setItem(USERS_KEY, JSON.stringify([...users, newUser]));
     
     // Seed default tasks for this new user
-    const userActivitiesKey = `day_out_activities_${name}`;
-    localStorage.setItem(userActivitiesKey, JSON.stringify(DEFAULT_ACTIVITIES));
+    const userTasksKey = `day_out_tasks_${formattedEmail}`;
+    localStorage.setItem(userTasksKey, JSON.stringify(getSeedTasksForCurrentWeek()));
     
-    // Log the user in
-    plannerStorage.setCurrentUser(name);
+    // Log in
+    plannerStorage.setCurrentUser(formattedEmail);
     return { success: true };
   },
 
-  login: (username: string, password: string): { success: boolean; error?: string } => {
-    const name = username.toLowerCase().trim();
+  login: (email: string, password: string): { success: boolean; error?: string } => {
+    const formattedEmail = email.toLowerCase().trim();
     const users = plannerStorage.getUsers();
-    const user = users.find(u => u.username === name);
+    const user = users.find(u => u.email === formattedEmail);
 
     if (!user || user.passwordHash !== btoa(password)) {
-      return { success: false, error: "Invalid username or password." };
+      return { success: false, error: "Invalid email or password." };
     }
 
-    plannerStorage.setCurrentUser(name);
+    plannerStorage.setCurrentUser(formattedEmail);
     return { success: true };
   },
 
@@ -97,91 +190,71 @@ export const plannerStorage = {
     plannerStorage.setCurrentUser(null);
   },
 
-  // --- SCOPED CONTENT (Scoped per current active user) ---
+  // --- CALENDAR TASKS SCOPED PER LOGGED-IN EMAIL ---
 
-  getActivities: (): Activity[] => {
-    const user = plannerStorage.getCurrentUser();
-    if (!user) return [];
+  getTasks: (): CalendarTask[] => {
+    const email = plannerStorage.getCurrentUser();
+    if (!email) return [];
     
-    const activitiesKey = `day_out_activities_${user}`;
+    const tasksKey = `day_out_tasks_${email}`;
     try {
-      const stored = localStorage.getItem(activitiesKey);
+      const stored = localStorage.getItem(tasksKey);
       if (!stored) {
-        localStorage.setItem(activitiesKey, JSON.stringify(DEFAULT_ACTIVITIES));
-        return DEFAULT_ACTIVITIES;
+        const seed = getSeedTasksForCurrentWeek();
+        localStorage.setItem(tasksKey, JSON.stringify(seed));
+        return seed;
       }
-      const parsed = JSON.parse(stored) as Activity[];
-      return parsed.sort((a, b) => a.order - b.order);
+      return JSON.parse(stored) as CalendarTask[];
     } catch (e) {
-      console.error("Error reading activities for " + user, e);
-      return DEFAULT_ACTIVITIES;
+      console.error("Error reading tasks for " + email, e);
+      return [];
     }
   },
 
-  saveActivities: (activities: Activity[]): void => {
-    const user = plannerStorage.getCurrentUser();
-    if (!user) return;
+  saveTasks: (tasks: CalendarTask[]): void => {
+    const email = plannerStorage.getCurrentUser();
+    if (!email) return;
 
-    const activitiesKey = `day_out_activities_${user}`;
+    const tasksKey = `day_out_tasks_${email}`;
     try {
-      const sorted = [...activities].sort((a, b) => a.order - b.order);
-      localStorage.setItem(activitiesKey, JSON.stringify(sorted));
+      localStorage.setItem(tasksKey, JSON.stringify(tasks));
       window.dispatchEvent(new Event("planner-storage-update"));
     } catch (e) {
-      console.error("Error saving activities for " + user, e);
+      console.error("Error saving tasks for " + email, e);
     }
   },
 
-  addActivity: (title: string): Activity => {
-    const activities = plannerStorage.getActivities();
-    const maxOrder = activities.reduce((max, act) => act.order > max ? act.order : max, -1);
-    const newActivity: Activity = {
+  addTask: (title: string, date: string): CalendarTask => {
+    const tasks = plannerStorage.getTasks();
+    const newTask: CalendarTask = {
       id: Math.random().toString(36).substring(2, 9),
       title: title.trim(),
       completed: false,
-      order: maxOrder + 1,
-      hidden: false,
+      date: date,
+      color: "none",
+      notes: "",
+      subtasks: []
     };
-    plannerStorage.saveActivities([...activities, newActivity]);
-    return newActivity;
+    plannerStorage.saveTasks([...tasks, newTask]);
+    return newTask;
   },
 
-  updateActivity: (updated: Activity): void => {
-    const activities = plannerStorage.getActivities();
-    const index = activities.findIndex(a => a.id === updated.id);
+  updateTask: (updated: CalendarTask): void => {
+    const tasks = plannerStorage.getTasks();
+    const index = tasks.findIndex(t => t.id === updated.id);
     if (index !== -1) {
-      activities[index] = updated;
-      plannerStorage.saveActivities(activities);
+      tasks[index] = updated;
+      plannerStorage.saveTasks(tasks);
     }
   },
 
-  deleteActivity: (id: string): void => {
-    const activities = plannerStorage.getActivities();
-    const filtered = activities.filter(a => a.id !== id);
-    const reindexed = filtered.map((act, idx) => ({ ...act, order: idx }));
-    plannerStorage.saveActivities(reindexed);
+  deleteTask: (id: string): void => {
+    const tasks = plannerStorage.getTasks();
+    const filtered = tasks.filter(t => t.id !== id);
+    plannerStorage.saveTasks(filtered);
   },
 
-  getPhoto: (): string | null => {
-    const user = plannerStorage.getCurrentUser();
-    if (!user) return null;
-    return localStorage.getItem(`day_out_photo_${user}`);
-  },
-
-  savePhoto: (base64String: string | null): void => {
-    const user = plannerStorage.getCurrentUser();
-    if (!user) return;
-
-    const photoKey = `day_out_photo_${user}`;
-    if (base64String) {
-      localStorage.setItem(photoKey, base64String);
-    } else {
-      localStorage.removeItem(photoKey);
-    }
-    window.dispatchEvent(new Event("planner-storage-update"));
-  },
-
-  // --- SETTINGS (Shared or scoped) ---
+  // --- SETTINGS ---
 
   getAudioSettings: (): { music: boolean; sound: boolean } => {
     const defaultSettings = { music: false, sound: false };
