@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { type CalendarTask, type Subtask } from "../lib/storage";
+import React, { useState, useEffect } from "react";
+import { type CalendarTask, type Subtask, plannerStorage } from "../lib/storage";
+import { playCarriageReturnBell } from "../lib/audio";
 
 interface TaskModalProps {
   task: CalendarTask;
@@ -20,6 +21,47 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [notes, setNotes] = useState(task.notes || "");
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks || []);
   const [showColorPicker, setShowColorPicker] = useState(false);
+
+  // Pomodoro Timer States
+  const [timerSeconds, setTimerSeconds] = useState(1500); // 25 minutes
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds((prev) => {
+          if (prev <= 1) {
+            setIsTimerRunning(false);
+            if (interval) clearInterval(interval);
+            
+            try {
+              const audioSettings = plannerStorage.getAudioSettings();
+              if (audioSettings.sound) {
+                playCarriageReturnBell();
+              }
+            } catch (err) {
+              console.error(err);
+            }
+            alert(`Timer finished for: "${title || "Untitled Task"}"! Take a break.`);
+            return 1500;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (interval) clearInterval(interval);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning, title]);
+
+  const formatTime = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const secs = sec % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // Format date for modal header: e.g., "Mon, 22 Jun 2026"
   const getFormattedDate = () => {
@@ -234,6 +276,57 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               </svg>
             )}
           </button>
+        </div>
+
+        {/* Pomodoro Timer Row */}
+        <div className="modal-pomodoro-timer-row" style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          backgroundColor: "rgba(255, 255, 255, 0.4)",
+          padding: "8px 12px",
+          borderRadius: "10px",
+          fontSize: "13px",
+          marginTop: "5px"
+        }}>
+          <span style={{ fontWeight: 500, color: "#475569" }}>⏱ Pomodoro Timer</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span className="font-mono" style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a" }}>
+              {formatTime(timerSeconds)}
+            </span>
+            <button
+              onClick={() => setIsTimerRunning(!isTimerRunning)}
+              style={{
+                border: 0,
+                background: "#475569",
+                color: "#fff",
+                padding: "3px 8px",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: "bold"
+              }}
+            >
+              {isTimerRunning ? "Pause" : "Start"}
+            </button>
+            <button
+              onClick={() => {
+                setIsTimerRunning(false);
+                setTimerSeconds(1500);
+              }}
+              style={{
+                border: "1px solid #cbd5e1",
+                background: "transparent",
+                color: "#475569",
+                padding: "2px 6px",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "11px"
+              }}
+            >
+              Reset
+            </button>
+          </div>
         </div>
 
         {/* Text toolbar matching screenshot */}

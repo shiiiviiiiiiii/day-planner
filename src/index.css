@@ -1064,3 +1064,208 @@ body {
   margin: 6px 0;
 }
 
+/* --- DUMP LIST DRAWER --- */
+.dump-list-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(1px);
+  z-index: 800;
+}
+
+.dump-list-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 360px;
+  background-color: #fbfbfa;
+  border-left: 1px solid #e5e7eb;
+  padding: 30px 24px;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  z-index: 810;
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.dump-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dump-drawer-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dump-drawer-close-btn {
+  background: transparent;
+  border: 0;
+  font-size: 18px;
+  color: #888888;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.dump-drawer-close-btn:hover {
+  color: #111111;
+}
+
+.dump-drawer-help {
+  font-size: 12px;
+  color: #888888;
+  line-height: 1.4;
+  margin-bottom: 25px;
+  border-bottom: 1px dashed #e5e7eb;
+  padding-bottom: 15px;
+}
+
+.dump-drawer-entries {
+  flex-grow: 1;
+  background-image: linear-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 100% 32px;
+  position: relative;
+  padding-top: 1px;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* --- DAILY POLAROID PHOTO memories --- */
+.day-polaroid-wrapper {
+  margin-top: auto;
+  min-height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px dashed rgba(229, 231, 235, 0.5);
+  position: relative;
+}
+
+.day-polaroid-card {
+  position: relative;
+  background-color: #ffffff;
+  padding: 6px 6px 16px 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.day-polaroid-card:hover {
+  transform: rotate(0deg) scale(1.05) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+/* Alternate slight rotation angles for polaroids to look analog/cozy */
+.calendar-day-column:nth-child(odd) .day-polaroid-card {
+  transform: rotate(-2deg);
+}
+
+.calendar-day-column:nth-child(even) .day-polaroid-card {
+  transform: rotate(2deg);
+}
+
+.day-polaroid-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border: 1px solid #f3f4f6;
+}
+
+.day-polaroid-caption {
+  font-size: 8px;
+  color: #a3a3a3;
+  margin-top: 6px;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Hover photo delete overlay btn */
+.day-polaroid-delete-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  color: #ffffff;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: opacity 0.2s;
+}
+
+.day-polaroid-card:hover .day-polaroid-delete-btn {
+  opacity: 1;
+}
+
+/* Hover Camera Upload trigger */
+.day-polaroid-camera-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #888888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+  opacity: 0;
+}
+
+.calendar-day-column:hover .day-polaroid-camera-btn {
+  opacity: 1;
+}
+
+.day-polaroid-camera-btn:hover {
+  background-color: #e5e7eb;
+  color: #1a1a1a;
+}
+
+.day-polaroid-camera-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* --- TEXT WRAPPING OPTION --- */
+.calendar-task-item.text-wrap {
+  height: auto;
+  min-height: 32px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.calendar-task-item.text-wrap .task-title {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+

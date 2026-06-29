@@ -3,6 +3,7 @@ import { AuthScreen } from "./components/AuthScreen";
 import { CalendarGrid } from "./components/CalendarGrid";
 import { SomedaySection } from "./components/SomedaySection";
 import { TaskModal } from "./components/TaskModal";
+import { DumpListDrawer } from "./components/DumpListDrawer";
 import { type CalendarTask, plannerStorage } from "./lib/storage";
 import { playTypewriterClick, playCarriageReturnBell, playAmbientMusic, stopAmbientMusic } from "./lib/audio";
 
@@ -13,11 +14,21 @@ const getMonday = (d: Date) => {
   return new Date(date.setDate(diff));
 };
 
+const parseColorTag = (text: string): { cleanedTitle: string; color: string } => {
+  const match = text.match(/#(yellow|green|blue|pink|none)\b/i);
+  if (match) {
+    const color = match[1].toLowerCase();
+    const cleanedTitle = text.replace(match[0], "").replace(/\s+/g, " ").trim();
+    return { cleanedTitle, color };
+  }
+  return { cleanedTitle: text, color: "none" };
+};
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [activeWeekMonday, setActiveWeekMonday] = useState<Date>(getMonday(new Date()));
-  const [audioSettings, setAudioSettings] = useState({ music: false, sound: false });
+  const [audioSettings, setAudioSettings] = useState({ music: false, sound: false, textWrapping: false });
 
   // Drag and Drop state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
@@ -28,9 +39,14 @@ export default function App() {
   // Shared Calendar state
   const [sharedTasks, setSharedTasks] = useState<CalendarTask[] | null>(null);
   const [isSharedMode, setIsSharedMode] = useState(false);
+
+  // Layout states
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [isDumpListOpen, setIsDumpListOpen] = useState(false);
+  const [dayPhotos, setDayPhotos] = useState<{ [dateStr: string]: string }>({});
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [weekShiftTimer, setWeekShiftTimer] = useState<any>(null);
 
   useEffect(() => {
     // 1. Check for shared calendar link in URL params
@@ -55,9 +71,15 @@ export default function App() {
 
     if (user) {
       setTasks(plannerStorage.getTasks());
+      loadPhotosForWeek(activeWeekMonday);
     }
 
-    setAudioSettings(plannerStorage.getAudioSettings());
+    const settings = plannerStorage.getAudioSettings();
+    setAudioSettings({
+      music: settings.music,
+      sound: settings.sound,
+      textWrapping: settings.textWrapping || false,
+    });
     setIsLoaded(true);
 
     const handleStorageUpdate = () => {
@@ -71,18 +93,42 @@ export default function App() {
     };
   }, []);
 
+  // Reload photos when active week or user changes
+  useEffect(() => {
+    if (currentUser) {
+      loadPhotosForWeek(activeWeekMonday);
+    }
+  }, [activeWeekMonday, currentUser]);
+
+  const loadPhotosForWeek = (monday: Date) => {
+    const photos: { [dateStr: string]: string } = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = d.toISOString().split("T")[0];
+      const photo = plannerStorage.getDayPhoto(dateStr);
+      if (photo) {
+        photos[dateStr] = photo;
+      }
+    }
+    setDayPhotos(photos);
+  };
+
   // Handle successful login/signup
   const handleAuthSuccess = () => {
     const user = plannerStorage.getCurrentUser();
     setCurrentUser(user);
     setTasks(plannerStorage.getTasks());
+    loadPhotosForWeek(activeWeekMonday);
   };
 
   const handleLogout = () => {
     plannerStorage.logout();
     setCurrentUser(null);
     setTasks([]);
+    setDayPhotos({});
     setActiveModalTask(null);
+    setIsDumpListOpen(false);
   };
 
   // Navigations
@@ -100,6 +146,27 @@ export default function App() {
 
   const handleTodayNav = () => {
     setActiveWeekMonday(getMonday(new Date()));
+  };
+
+  // Drag over Arrow week navigation shifts
+  const handleDragOverWeekShift = (direction: "prev" | "next") => {
+    if (weekShiftTimer) return;
+    const timer = setTimeout(() => {
+      if (direction === "prev") {
+        handlePrevWeek();
+      } else {
+        handleNextWeek();
+      }
+      setWeekShiftTimer(null);
+    }, 700);
+    setWeekShiftTimer(timer);
+  };
+
+  const handleDragLeaveWeekShift = () => {
+    if (weekShiftTimer) {
+      clearTimeout(weekShiftTimer);
+      setWeekShiftTimer(null);
+    }
   };
 
   // Task Operations
@@ -130,12 +197,13 @@ export default function App() {
 
   const handleAddTask = (title: string, dateStr: string) => {
     if (isSharedMode) return;
+    const { cleanedTitle, color } = parseColorTag(title);
     const newTask: CalendarTask = {
       id: Math.random().toString(36).substring(2, 9),
-      title: title.trim(),
+      title: cleanedTitle,
       completed: false,
       date: dateStr,
-      color: "none",
+      color: color,
       notes: "",
       subtasks: []
     };
@@ -146,12 +214,30 @@ export default function App() {
 
   const handleAddSomedayTask = (title: string) => {
     if (isSharedMode) return;
+    const { cleanedTitle, color } = parseColorTag(title);
     const newTask: CalendarTask = {
       id: Math.random().toString(36).substring(2, 9),
-      title: title.trim(),
+      title: cleanedTitle,
       completed: false,
       date: "someday",
-      color: "none",
+      color: color,
+      notes: "",
+      subtasks: []
+    };
+    const updated = [...tasks, newTask];
+    setTasks(updated);
+    plannerStorage.saveTasks(updated);
+  };
+
+  const handleAddDumpTask = (title: string) => {
+    if (isSharedMode) return;
+    const { cleanedTitle, color } = parseColorTag(title);
+    const newTask: CalendarTask = {
+      id: Math.random().toString(36).substring(2, 9),
+      title: cleanedTitle,
+      completed: false,
+      date: "dump",
+      color: color,
       notes: "",
       subtasks: []
     };
@@ -161,8 +247,19 @@ export default function App() {
   };
 
   const handleUpdateTask = (updatedTask: CalendarTask) => {
+    const { cleanedTitle, color } = parseColorTag(updatedTask.title);
+    
+    // Maintain old color tag if none was typed inside title
+    const finalColor = color !== "none" ? color : (updatedTask.color || "none");
+
+    const finalizedTask = {
+      ...updatedTask,
+      title: cleanedTitle,
+      color: finalColor,
+    };
+
     const currentList = isSharedMode && sharedTasks ? sharedTasks : tasks;
-    const updated = currentList.map((t) => (t.id === updatedTask.id ? updatedTask : t));
+    const updated = currentList.map((t) => (t.id === updatedTask.id ? finalizedTask : t));
 
     if (isSharedMode) {
       setSharedTasks(updated);
@@ -173,19 +270,20 @@ export default function App() {
 
     // Keep active modal in sync
     if (activeModalTask && activeModalTask.id === updatedTask.id) {
-      setActiveModalTask(updatedTask);
+      setActiveModalTask(finalizedTask);
     }
   };
 
   const handleDeleteTask = (id: string) => {
+    const currentList = isSharedMode && sharedTasks ? sharedTasks : tasks;
+    const updated = currentList.filter((t) => t.id !== id);
+
     if (isSharedMode) {
-      if (sharedTasks) {
-        setSharedTasks(sharedTasks.filter((t) => t.id !== id));
-      }
-      return;
+      setSharedTasks(updated);
+    } else {
+      setTasks(updated);
+      plannerStorage.saveTasks(updated);
     }
-    plannerStorage.deleteTask(id);
-    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const handleMoveTask = (id: string, targetDateStr: string) => {
@@ -201,16 +299,30 @@ export default function App() {
     plannerStorage.saveTasks(updated);
   };
 
+  // Polaroid Daily Photos Handlers
+  const handleUploadPhoto = (dateStr: string, base64: string) => {
+    plannerStorage.saveDayPhoto(dateStr, base64);
+    setDayPhotos((prev) => ({ ...prev, [dateStr]: base64 }));
+  };
+
+  const handleDeletePhoto = (dateStr: string) => {
+    plannerStorage.saveDayPhoto(dateStr, null);
+    setDayPhotos((prev) => {
+      const updated = { ...prev };
+      delete updated[dateStr];
+      return updated;
+    });
+  };
+
   // Import shared calendar tasks
   const handleImportShared = () => {
     if (!sharedTasks) return;
     const merged = [...tasks];
-    // Avoid double imports by filtering duplicates
     sharedTasks.forEach((sTask) => {
       if (!merged.some((m) => m.title === sTask.title && m.date === sTask.date)) {
         merged.push({
           ...sTask,
-          id: Math.random().toString(36).substring(2, 9), // Assign fresh local ID
+          id: Math.random().toString(36).substring(2, 9),
         });
       }
     });
@@ -218,7 +330,6 @@ export default function App() {
     plannerStorage.saveTasks(merged);
     setIsSharedMode(false);
     setSharedTasks(null);
-    // Clear URL parameters
     window.history.replaceState({}, document.title, window.location.pathname);
     alert("Shared calendar tasks have been imported into your notebook!");
   };
@@ -229,23 +340,21 @@ export default function App() {
     window.history.replaceState({}, document.title, window.location.pathname);
   };
 
-  // Generate Base64 Share Link for active week
+  // Generate Base64 Share Link
   const handleShareCalendar = () => {
     const weekDaysStrs: string[] = [];
-
     for (let i = 0; i < 7; i++) {
       const d = new Date(activeWeekMonday);
       d.setDate(activeWeekMonday.getDate() + i);
       weekDaysStrs.push(d.toISOString().split("T")[0]);
     }
 
-    // Grab tasks scheduled for the currently viewed week + someday tasks
     const tasksToShare = tasks.filter(
       (t) => weekDaysStrs.includes(t.date) || t.date === "someday"
     );
 
     const json = JSON.stringify(tasksToShare);
-    const base64 = btoa(unescape(encodeURIComponent(json))); // Unicode-safe Base64 encoding
+    const base64 = btoa(unescape(encodeURIComponent(json)));
     const shareUrl = `${window.location.origin}${window.location.pathname}?share=${base64}`;
 
     navigator.clipboard.writeText(shareUrl).then(
@@ -260,7 +369,7 @@ export default function App() {
 
   const handleMusicToggle = () => {
     const nextMusic = !audioSettings.music;
-    const updated = { music: nextMusic, sound: audioSettings.sound };
+    const updated = { music: nextMusic, sound: audioSettings.sound, textWrapping: audioSettings.textWrapping };
     plannerStorage.saveAudioSettings(updated);
     setAudioSettings(updated);
     if (nextMusic) {
@@ -272,12 +381,18 @@ export default function App() {
 
   const handleSoundToggle = () => {
     const nextSound = !audioSettings.sound;
-    const updated = { music: audioSettings.music, sound: nextSound };
+    const updated = { music: audioSettings.music, sound: nextSound, textWrapping: audioSettings.textWrapping };
     plannerStorage.saveAudioSettings(updated);
     setAudioSettings(updated);
   };
 
-  // Format month and year header (e.g. "June 2026")
+  const handleTextWrappingToggle = () => {
+    const nextWrapping = !audioSettings.textWrapping;
+    const updated = { music: audioSettings.music, sound: audioSettings.sound, textWrapping: nextWrapping };
+    plannerStorage.saveAudioSettings(updated);
+    setAudioSettings(updated);
+  };
+
   const getHeaderMonthYear = () => {
     const options: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" };
     return activeWeekMonday.toLocaleDateString("default", options);
@@ -344,6 +459,25 @@ export default function App() {
                     <h1 className="calendar-month-year">{getHeaderMonthYear()}</h1>
 
                     <div className="calendar-header-right">
+                      {/* Dump List Drawer Toggle Button (Slightly orange list button) */}
+                      {currentUser && (
+                        <button
+                          onClick={() => setIsDumpListOpen(!isDumpListOpen)}
+                          className="btn-header-circle btn-more"
+                          style={{ backgroundColor: "#fef3c7", color: "#d97706" }}
+                          title="Open Dump List Drawer"
+                        >
+                          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none">
+                            <line x1="8" y1="6" x2="21" y2="6" />
+                            <line x1="8" y1="12" x2="21" y2="12" />
+                            <line x1="8" y1="18" x2="21" y2="18" />
+                            <line x1="3" y1="6" x2="3.01" y2="6" />
+                            <line x1="3" y1="12" x2="3.01" y2="12" />
+                            <line x1="3" y1="18" x2="3.01" y2="18" />
+                          </svg>
+                        </button>
+                      )}
+
                       {/* Profile Button (Blue Circle) */}
                       {currentUser && (
                         <button
@@ -388,6 +522,9 @@ export default function App() {
                             <button onClick={() => { setShowSettingsMenu(false); handleSoundToggle(); }} className="dropdown-item">
                               ⌨ Sounds: {audioSettings.sound ? "ON" : "OFF"}
                             </button>
+                            <button onClick={() => { setShowSettingsMenu(false); handleTextWrappingToggle(); }} className="dropdown-item">
+                              Wrap Text: {audioSettings.textWrapping ? "ON" : "OFF"}
+                            </button>
                             <button onClick={() => { setShowSettingsMenu(false); handleTodayNav(); }} className="dropdown-item">
                               Go to Today
                             </button>
@@ -399,11 +536,23 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Navigation Arrow buttons */}
-                      <button onClick={handlePrevWeek} className="btn-header-circle btn-nav-arrow-left" title="Previous Week">
+                      {/* Navigation Arrow buttons supporting drag week shifts */}
+                      <button 
+                        onClick={handlePrevWeek} 
+                        onDragOver={(e) => { e.preventDefault(); handleDragOverWeekShift("prev"); }}
+                        onDragLeave={handleDragLeaveWeekShift}
+                        className="btn-header-circle btn-nav-arrow-left" 
+                        title="Previous Week"
+                      >
                         &lt;
                       </button>
-                      <button onClick={handleNextWeek} className="btn-header-circle btn-nav-arrow-right" title="Next Week">
+                      <button 
+                        onClick={handleNextWeek} 
+                        onDragOver={(e) => { e.preventDefault(); handleDragOverWeekShift("next"); }}
+                        onDragLeave={handleDragLeaveWeekShift}
+                        className="btn-header-circle btn-nav-arrow-right" 
+                        title="Next Week"
+                      >
                         &gt;
                       </button>
                     </div>
@@ -419,6 +568,10 @@ export default function App() {
                     draggedTaskId={draggedTaskId}
                     setDraggedTaskId={setDraggedTaskId}
                     onMoveTask={handleMoveTask}
+                    dayPhotos={dayPhotos}
+                    onUploadPhoto={handleUploadPhoto}
+                    onDeletePhoto={handleDeletePhoto}
+                    textWrappingEnabled={audioSettings.textWrapping}
                   />
 
                   {/* Someday task tray at the bottom */}
@@ -432,6 +585,17 @@ export default function App() {
                     onMoveTask={handleMoveTask}
                   />
 
+                  {/* Dump List Drawer (Jot ideas and drag onto calendar) */}
+                  <DumpListDrawer
+                    isOpen={isDumpListOpen}
+                    onClose={() => setIsDumpListOpen(false)}
+                    tasks={activeTaskList}
+                    onToggleComplete={handleToggleComplete}
+                    onTaskClick={(t) => setActiveModalTask(t)}
+                    onAddTask={handleAddDumpTask}
+                    setDraggedTaskId={setDraggedTaskId}
+                  />
+
                   {/* Task Detail Modal Popover Card */}
                   {activeModalTask && (
                     <TaskModal
@@ -442,36 +606,13 @@ export default function App() {
                     />
                   )}
 
-                  {/* Settings and Info Footer */}
+                  {/* Minimal Info Footer */}
                   <footer className="planner-footer font-typewriter">
-                    <div style={{ display: "flex", gap: "20px" }}>
-                      <button 
-                        onClick={handleMusicToggle} 
-                        style={{ background: "transparent", border: 0, cursor: "pointer", color: "#888" }}
-                      >
-                        {audioSettings.music ? "♪ Music ON" : "🎚 Music OFF"}
-                      </button>
-                      <button 
-                        onClick={handleSoundToggle} 
-                        style={{ background: "transparent", border: 0, cursor: "pointer", color: "#888" }}
-                      >
-                        ⌨ Sounds {audioSettings.sound ? "ON" : "OFF"}
-                      </button>
-                    </div>
-
                     <div>
-                      {currentUser ? (
-                        <div className="user-status-container">
-                          <span>Logged in: {currentUser}</span>
-                          <button onClick={handleLogout} className="logout-btn">
-                            Log Out
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setIsSharedMode(false)} className="btn-link-action">
-                          Log In to Create Account
-                        </button>
-                      )}
+                      <span>Logged in: {currentUser}</span>
+                    </div>
+                    <div>
+                      <span>— The Day Out Planner</span>
                     </div>
                   </footer>
                 </>

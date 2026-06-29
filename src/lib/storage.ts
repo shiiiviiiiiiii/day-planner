@@ -8,7 +8,7 @@ export interface CalendarTask {
   id: string;
   title: string;
   completed: boolean;
-  date: string; // Format: "YYYY-MM-DD" or "someday"
+  date: string; // Format: "YYYY-MM-DD", "someday", or "dump"
   color?: string; // "yellow" | "green" | "blue" | "pink" | "none"
   notes?: string;
   subtasks?: Subtask[];
@@ -52,7 +52,7 @@ const getSeedTasksForCurrentWeek = (): CalendarTask[] => {
       completed: false, 
       date: formatDate(0), // Monday
       color: "none", 
-      notes: "Clicking a task opens a popup window where you can add subtasks and detailed descriptions.", 
+      notes: "Clicking a task opens a popup window where you can add subtasks, Pomodoro timers and descriptions.", 
       subtasks: [] 
     },
     { 
@@ -61,7 +61,7 @@ const getSeedTasksForCurrentWeek = (): CalendarTask[] => {
       completed: false, 
       date: formatDate(0), // Monday
       color: "none", 
-      notes: "You can drag and drop items between days or down to Someday.", 
+      notes: "You can drag and drop items between days, down to Someday, or onto the left/right arrows in the header to change weeks.", 
       subtasks: [] 
     },
     { 
@@ -75,11 +75,11 @@ const getSeedTasksForCurrentWeek = (): CalendarTask[] => {
     },
     { 
       id: "s5", 
-      title: "Hope you like 😆", 
+      title: "Type tags like #pink", 
       completed: false, 
       date: formatDate(1), // Tuesday
-      color: "none", 
-      notes: "A clean weekly dashboard designed for sharing.", 
+      color: "pink", 
+      notes: "Type #blue, #green, #yellow, or #pink in task titles to color-code them instantly!", 
       subtasks: [] 
     },
     { 
@@ -224,40 +224,30 @@ export const plannerStorage = {
     }
   },
 
-  addTask: (title: string, date: string): CalendarTask => {
-    const tasks = plannerStorage.getTasks();
-    const newTask: CalendarTask = {
-      id: Math.random().toString(36).substring(2, 9),
-      title: title.trim(),
-      completed: false,
-      date: date,
-      color: "none",
-      notes: "",
-      subtasks: []
-    };
-    plannerStorage.saveTasks([...tasks, newTask]);
-    return newTask;
+  // --- DAILY MEMORY PHOTOS (POLAROIDS AT THE BOTTOM) ---
+
+  getDayPhoto: (dateStr: string): string | null => {
+    const email = plannerStorage.getCurrentUser();
+    if (!email) return null;
+    return localStorage.getItem(`day_photo_${email}_${dateStr}`);
   },
 
-  updateTask: (updated: CalendarTask): void => {
-    const tasks = plannerStorage.getTasks();
-    const index = tasks.findIndex(t => t.id === updated.id);
-    if (index !== -1) {
-      tasks[index] = updated;
-      plannerStorage.saveTasks(tasks);
+  saveDayPhoto: (dateStr: string, base64: string | null): void => {
+    const email = plannerStorage.getCurrentUser();
+    if (!email) return;
+    const photoKey = `day_photo_${email}_${dateStr}`;
+    if (base64) {
+      localStorage.setItem(photoKey, base64);
+    } else {
+      localStorage.removeItem(photoKey);
     }
+    window.dispatchEvent(new Event("planner-day-photo-update"));
   },
 
-  deleteTask: (id: string): void => {
-    const tasks = plannerStorage.getTasks();
-    const filtered = tasks.filter(t => t.id !== id);
-    plannerStorage.saveTasks(filtered);
-  },
+  // --- AUDIO & WRAPPING SETTINGS ---
 
-  // --- SETTINGS ---
-
-  getAudioSettings: (): { music: boolean; sound: boolean } => {
-    const defaultSettings = { music: false, sound: false };
+  getAudioSettings: (): { music: boolean; sound: boolean; textWrapping?: boolean } => {
+    const defaultSettings = { music: false, sound: false, textWrapping: false };
     try {
       const stored = localStorage.getItem(AUDIO_SETTINGS_KEY);
       return stored ? JSON.parse(stored) : defaultSettings;
@@ -266,7 +256,7 @@ export const plannerStorage = {
     }
   },
 
-  saveAudioSettings: (settings: { music: boolean; sound: boolean }): void => {
+  saveAudioSettings: (settings: { music: boolean; sound: boolean; textWrapping?: boolean }): void => {
     localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify(settings));
     window.dispatchEvent(new Event("planner-audio-settings-update"));
   }
